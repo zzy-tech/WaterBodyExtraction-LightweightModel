@@ -1,4 +1,3 @@
-# models/aer_unet.py
 """
 Implementation of AER U-Net (Attention-Enhanced Multi-Scale Residual U-Net) for Sentinel-2 water segmentation.
 Modified to support 6-channel input (blue, green, red, near-infrared, SWIR1, SWIR2).
@@ -75,51 +74,51 @@ class AERUNet(nn.Module):
     def __init__(self, n_channels=6, n_classes=1, base_features=32, dropout_rate=0.3):
         super(AERUNet, self).__init__()
         
-        # 编码器部分 (3个层级)
-        # 编码器第1层: 32个过滤器
+        # Encoder (3 levels)
+        # Encoder level 1: 32 filters
         self.enc1 = ResidualBlock(n_channels, base_features, dropout_rate)
         self.pool1 = nn.MaxPool2d(2)
         
-        # 编码器第2层: 64个过滤器
+        # Encoder level 2: 64 filters
         self.enc2 = ResidualBlock(base_features, base_features * 2, dropout_rate)
         self.pool2 = nn.MaxPool2d(2)
         
-        # 编码器第3层: 128个过滤器
+        # Encoder level 3: 128 filters
         self.enc3 = ResidualBlock(base_features * 2, base_features * 4, dropout_rate)
         self.pool3 = nn.MaxPool2d(2)
 
-        # 瓶颈层 (256个过滤器)
+        # Bottleneck: 256 filters
         self.bottleneck = ResidualBlock(base_features * 4, base_features * 8, dropout_rate)
         
-        # 解码器部分 (3个层级)
-        # 解码器第3层 (输入: 256个过滤器, 输出: 128个过滤器)
+        # Decoder (3 levels)
+        # Decoder level 3 (input: 256 filters, output: 128 filters)
         self.up3 = nn.ConvTranspose2d(base_features * 8, base_features * 4, kernel_size=2, stride=2)
         self.attn3 = AttentionGate(F_g=base_features * 4, F_l=base_features * 4, F_int=base_features * 2)
         self.dec3 = ResidualBlock(base_features * 8, base_features * 4, dropout_rate)
 
-        # 解码器第2层 (输入: 128个过滤器, 输出: 64个过滤器)
+        # Decoder level 2 (input: 128 filters, output: 64 filters)
         self.up2 = nn.ConvTranspose2d(base_features * 4, base_features * 2, kernel_size=2, stride=2)
         self.attn2 = AttentionGate(F_g=base_features * 2, F_l=base_features * 2, F_int=base_features)
         self.dec2 = ResidualBlock(base_features * 4, base_features * 2, dropout_rate)
         
-        # 解码器第1层 (输入: 64个过滤器, 输出: 32个过滤器)
+        # Decoder level 1 (input: 64 filters, output: 32 filters)
         self.up1 = nn.ConvTranspose2d(base_features * 2, base_features, kernel_size=2, stride=2)
         self.attn1 = AttentionGate(F_g=base_features, F_l=base_features, F_int=base_features // 2)
         self.dec1 = ResidualBlock(base_features * 2, base_features, dropout_rate)
 
-        # 输出层
+        # Output layer
         self.out_conv = nn.Conv2d(base_features, n_classes, kernel_size=1)
 
     def forward(self, x):
-        # 编码器路径
-        e1 = self.enc1(x)  # 输入6通道图像
+        # Encoder path
+        e1 = self.enc1(x)  # 6-channel input image
         e2 = self.enc2(self.pool1(e1))
         e3 = self.enc3(self.pool2(e2))
 
-        # 瓶颈层
+        # Bottleneck
         b = self.bottleneck(self.pool3(e3))
         
-        # 带注意力机制的解码器路径
+        # Decoder path with attention mechanism
         d3 = self.up3(b)
         e3_attn = self.attn3(g=d3, x=e3)
         d3 = torch.cat((e3_attn, d3), dim=1)
@@ -139,8 +138,8 @@ class AERUNet(nn.Module):
 
 def get_aer_unet_model(n_channels=6, n_classes=1, base_features=32, dropout_rate=0.3):
     """
-    工厂函数，创建适用于Sentinel-2水体分割的AER U-Net模型。
-    默认配置为6通道输入，适合Sentinel-2数据。
+    Factory function to create an AER U-Net model for Sentinel-2 water segmentation.
+    Default configuration: 6-channel input, suitable for Sentinel-2 data.
     """
     return AERUNet(
         n_channels=n_channels,
