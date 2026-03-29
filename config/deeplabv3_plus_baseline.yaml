@@ -1,1 +1,134 @@
+# === DeepLabV3+ Baseline Configuration ===
+# Standard DeepLabV3+ for comparison with lightweight models
 
+# === Data Settings ===
+data:
+  data_dir: dataset                  # Root dataset directory
+  images: dataset/Images             # Sentinel-2 6-channel GeoTIFFs (B2,B3,B4,B8,B11,B12)
+  masks:  dataset/Masks              # Binary masks (0/1) with matching filenames
+  num_workers: 4                     # Increased workers for faster loading
+  pin_memory: true                   # Enable pinned memory for faster GPU transfer
+  persistent_workers: true           # Keep workers alive between epochs
+  splits:
+    train: splits/train.txt          # Training split
+    val: splits/val.txt              # Validation split
+    test: splits/test.txt            # Test split
+
+# === Data Augmentation ===
+augment:
+  flip_p: 0.5                        # Probability for horizontal/vertical flip
+  rotate90: true                     # Random 90/180/270 degree rotation
+  scale: [0.9, 1.1]                  # Random scaling range
+  out_size: [256, 256]               # Output image size
+  color_jitter: false                # Disable for multispectral data
+  jitter_strength: 0.0               # Color jitter strength
+  gauss_noise_std: 0.01               # Gaussian noise standard deviation
+  hue_range: [0, 0]                   # Hue jitter (disabled)
+  saturation_range: [0, 0]            # Saturation jitter (disabled)
+
+# === Training Parameters ===
+train:
+  batch_size: 8                       # Batch size
+  epochs: 50                          # Total training epochs
+  lr: 0.0005                          # Base learning rate
+  lr_backbone: 0.00025                # Backbone learning rate
+  lr_head: 0.0005                     # Head learning rate
+  weight_decay: 0.00005               # Weight decay
+  val_ratio: 0.1                      # Validation ratio
+  save_dir: checkpoints/deeplabv3_plus  # Checkpoint save directory
+  seed: 42                            # Random seed
+  gradient_accumulation_steps: 2      # Gradient accumulation steps
+  patience: 15                        # Early stopping patience
+  scheduler_type: plateau             # LR scheduler type
+  scheduler_patience: 5               # Scheduler patience
+  scheduler_factor: 0.5               # LR decay factor
+  loss_type: bce_dice                 # Loss function
+  bce_weight: 0.5                     # BCE loss weight
+  dice_weight: 0.5                    # Dice loss weight
+  dice_smooth: 1e-06                  # Dice smoothing
+  focal_alpha: 0.25                    # Focal loss alpha
+  focal_gamma: 2.0                     # Focal loss gamma
+  use_amp: true                       # Automatic mixed precision
+  min_lr: 1e-7                        # Minimum learning rate
+  scheduler_cooldown: 0                # Scheduler cooldown
+
+  # === Checkpoint Saving ===
+  save_improvement_threshold: 0.005   # Min improvement to save
+  save_interval_epochs: 5              # Save every N epochs
+
+  # === Optimizer ===
+  optimizer: adamw                    # Optimizer type
+  max_grad_norm: 1.0                  # Gradient clipping max norm
+  gradient_clipping: true             # Enable gradient clipping
+
+  # === Backbone Freezing ===
+  freeze_backbone: true               # Freeze backbone
+  freeze_backbone_epochs: 2           # Epochs to freeze backbone
+
+  # === Training Settings ===
+  early_stopping: true                # Enable early stopping
+  early_stopping_patience: 10          # Early stopping patience
+  pos_weight: 2.0                      # Positive class weight
+  use_tta: false                       # Test-time augmentation
+  tta_types: ['h_flip', 'v_flip', 'transpose']
+  ema: false                           # Exponential moving average
+  ema_decay: 0.999                     # EMA decay
+  rdrop_alpha: 0.0                     # R-Drop alpha
+  freeze_bn_stats: false               # Freeze batch norm stats
+  crf_iterations: 0                    # CRF iterations
+  use_advanced_aug: false              # Advanced augmentation
+  mixup_alpha: 0.0                     # MixUp alpha
+  cutmix_alpha: 0.0                    # CutMix alpha
+  mixup_prob: 0.0                      # MixUp probability
+  cutmix_prob: 0.0                     # CutMix probability
+
+# === Model Architecture ===
+model:
+  name: deeplabv3_plus
+  n_classes: 1                         # Number of output classes
+  in_ch: 6                             # Input channels
+  output_stride: 16                    # Output stride
+  pretrained_backbone: true           # Use pretrained backbone
+  aspp_out: 256                        # ASPP output channels
+  aspp_rates: [6, 12, 18]              # ASPP dilation rates
+  decoder_channels: 256                # Decoder channels
+
+# === Model List for Checkpoint Loading ===
+models:
+  - name: deeplabv3_plus
+    checkpoint_path: checkpoints/deeplabv3_plus_baseline/20251120_202936/deeplabv3_plus_best.pth
+    n_channels: 6
+    n_classes: 1
+    output_stride: 16
+    pretrained_backbone: true
+    aspp_out: 256
+    aspp_rates: [6, 12, 18]
+    decoder_channels: 256
+
+# === Device Settings ===
+device:
+  type: cuda
+  gpu_ids: [0]
+
+# === Evaluation Parameters ===
+eval:
+  THRESHOLD: 0.5  # Default binarization threshold
+
+# === Inference Parameters ===
+predict:
+  tile_size: 256                       # Inference tile size
+  overlap: 128                         # Overlap between tiles
+  use_sliding_window: true             # Sliding window inference
+
+  # === Post-Processing ===
+  postprocessing:
+    gaussian_sigma: 1.0                # Gaussian smoothing sigma
+    median_kernel_size: 3              # Median blur kernel size
+    morph_close_kernel_size: 3         # Morphological closing kernel
+    morph_open_kernel_size: 0          # Morphological opening kernel
+    min_object_size: 50                # Remove small objects below size
+    hole_area_threshold: 30            # Fill small holes below size
+    adaptive_threshold: false           # Use Otsu thresholding
+
+  # === Post-Processing During Training ===
+  apply_postprocessing_during_training: false  # Disable for speed
