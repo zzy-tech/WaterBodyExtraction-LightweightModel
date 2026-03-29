@@ -1,1 +1,137 @@
+# Model Ensemble Configuration
+# Using Improved Performance-Weighted Ensemble Strategy
 
+# Inference Parameters
+predict:
+  # Binarization threshold
+  threshold: 0.5
+
+  # Disagreement threshold for gated fusion
+  diff_threshold: 0.20
+
+  # Confidence threshold for low-certainty regions
+  conf_threshold: 0.15
+
+  # Tile size for sliding-window inference
+  tile_size: 256
+
+  # Overlap between tiles for large-image processing
+  overlap: 128
+
+  # Inference batch size
+  batch_size: 1
+
+  # CRF iterations (0 to disable)
+  crf_iterations: 0
+
+  # Save visualization outputs
+  save_visualization: true
+
+  # Maximum number of images to visualize
+  max_visualizations: 6
+
+  # Save prediction maps as .tif
+  save_predictions: true
+
+  # Ensemble strategy
+  # Options: 'mean', 'weighted_mean', 'vote', 'logits_mean', 'stacking', 'adaptive', 'advanced_adaptive', 'performance_weighted', 'improved_performance_weighted'
+  ensemble_strategy: improved_performance_weighted
+
+  # Band indices to use for input
+  bands: [1, 2, 3, 4, 5, 6]
+
+  # Stacking ensemble config (used when strategy = 'stacking')
+  stacking:
+    fusion_layers: 3
+    hidden_units: 128
+    dropout_rate: 0.3
+    use_batch_norm: true
+
+  # Adaptive weight ensemble config (used when strategy = 'adaptive')
+  adaptive:
+    input_channels: 6
+    hidden_units: 64
+    dropout_rate: 0.2
+
+  # Advanced adaptive weight ensemble config (used when strategy = 'advanced_adaptive')
+  advanced_adaptive:
+    input_channels: 6
+    hidden_units: 128
+    dropout_rate: 0.3
+    use_attention: true
+
+  # Improved Performance-Weighted Ensemble config
+  improved_performance_weighted:
+    model_names: ['aer_unet', 'ultra_lightweight_deeplabv3_plus']
+    csv_paths: [
+      'test_evaluation/examples/aer_unet/evaluation_results_aer_unet_20251112_110131.csv',
+      'test_evaluation/examples/ultra_lightweight_deeplabv3_plus/evaluation_results_ultra_lightweight_deeplabv3_plus_20251118_092926.csv'
+    ]
+    metric_name: 'iou'
+    metric_weights:
+      iou: 0.5
+      dice: 0.3
+      f1_score: 0.2
+    temperature: 1.0
+    ensemble_method: 'gated_ensemble'  # Options: logits_weighted, prob_weighted, gated_ensemble
+    diff_threshold: 0.20
+    conf_threshold: 0.15
+
+  # Output directory for predictions
+  output_dir: "gate_keshihua"
+
+# Ensemble Settings
+ensemble:
+  # Improved Performance-Weighted Ensemble
+  improved_performance_weighted:
+    model_names: ['aer_unet', 'ultra_lightweight_deeplabv3_plus']
+    csv_paths: [
+      'test_evaluation/examples/aer_unet/evaluation_results_aer_unet_20251112_110131.csv',
+      'test_evaluation/examples/ultra_lightweight_deeplabv3_plus/evaluation_results_ultra_lightweight_deeplabv3_plus_20251118_092926.csv'
+    ]
+    metric_name: 'iou'
+    metric_weights:
+      iou: 0.5
+      dice: 0.3
+      f1_score: 0.2
+    temperature: 1.0
+    ensemble_method: 'gated_ensemble'
+    diff_threshold: 0.20
+    conf_threshold: 0.15
+
+# Evaluation Parameters
+eval:
+  # Binarization threshold
+  THRESHOLD: 0.5
+
+# Model Definitions
+models:
+  # AER-UNet (trained with Poyang Lake samples)
+  - name: "aer_unet"
+    checkpoint_path: "checkpoints/aer_unet/aer_unet_best.pth"
+    ens_weight: 0.5
+    n_channels: 6
+    n_classes: 1
+    base_features: 32
+    dropout_rate: 0.3
+
+  # Ultra Lightweight DeepLabV3+ (trained with Poyang Lake samples)
+  - name: "ultra_lightweight_deeplabv3_plus"
+    checkpoint_path: "checkpoints/ultra_lightweight_deeplabv3_plus/20251117_205601/ultra_lightweight_deeplabv3_plus_best.pth"
+    ens_weight: 0.5
+    n_channels: 6
+    n_classes: 1
+    pretrained_backbone: true
+    use_cbam: true
+    aspp_out: 128
+    dec_ch: 128
+    low_ch_out: 32
+    cbam_reduction_ratio: 16
+
+# Device Configuration
+device:
+  # Computation device
+  type: "cuda"  # Options: "cuda", "cpu"
+
+  # GPU indices if using multi-GPU
+  gpu_ids: [0]
