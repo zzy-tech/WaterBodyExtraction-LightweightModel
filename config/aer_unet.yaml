@@ -1,1 +1,94 @@
+# === AER-UNet Model Configuration ===
+# Optimized configuration for AER-UNet water segmentation
 
+# === Data Settings ===
+data:
+  data_dir: dataset                  # Root dataset directory
+  images: dataset/Image              # Sentinel-2 6-channel GeoTIFFs (B2,B3,B4,B8,B11,B12)
+  masks:  dataset/Mask               # Binary masks (0/1) with matching filenames
+  num_workers: 0                     # Set to 0 for stability
+  pin_memory: true                   # Enable pinned memory for faster GPU transfer
+  prefetch_factor: 4                  # Increase prefetch for better loading efficiency
+  persistent_workers: false           # Disable with num_workers=0
+  force_multiprocess: false            # Avoid conflicts with num_workers=0
+  splits:
+    train: splits/train.txt           # Training split list
+    val: splits/val.txt               # Validation split list
+    test: splits/test.txt             # Test split list
+
+# === Data Augmentation ===
+# Note: These settings are not currently used in the pipeline; extend dataloader to enable
+augment:
+  horizontal_flip: true
+  vertical_flip: true
+  rotation_range: 15
+  width_shift_range: 0.1
+  height_shift_range: 0.1
+  scale_range: [0.9, 1.1]
+  noise_std: 0.0
+  saturation_range: null
+  hue_range: null
+  elastic_alpha: 0.0
+  elastic_sigma: 0.0
+  use_advanced_aug: false
+  mixup_alpha: 0.0
+  mixup_prob: 0.0
+  cutmix_alpha: 0.0
+  cutmix_prob: 0.0
+
+train:
+  batch_size: 2                       # Reduced to avoid OOM
+  epochs: 20                          # Total training epochs
+  lr: 5e-05                           # Learning rate
+  weight_decay: 0.0001                # Weight decay
+  save_dir: checkpoints               # Base checkpoint directory
+  seed: 43                            # Random seed
+  gradient_accumulation_steps: 4       # Gradient accumulation steps
+  patience: 20                        # Early stopping patience
+  early_stopping: true                 # Enable early stopping
+  early_stopping_patience: 20          # Patience for early stopping
+  scheduler_type: plateau              # Reduce LR on plateau
+  scheduler_patience: 20               # LR scheduler patience
+  scheduler_factor: 0.1                # LR reduction factor
+  min_lr: 5e-6                         # Minimum learning rate
+  scheduler_cooldown: 0                # No cooldown period
+  scheduler_metric: dice               # Monitor Dice for scheduling
+  
+  # === EMA Settings ===
+  ema: false                           # Disable EMA for stability
+
+  # === Loss Function ===
+  loss_type: bce                       # Loss function type
+  bce_weight: 1.0                      # Weight for BCE loss
+  focal_weight: 0.5                    # Weight for Focal loss
+  lovasz_weight: 0.5                   # Weight for Lovasz loss
+  dice_smooth: 1e-6                     # Smoothing for Dice loss
+  focal_alpha: 1.0                      # Alpha for Focal loss
+  focal_gamma: 2.0                      # Gamma for Focal loss
+  pos_weight: 1.0                       # Positive class weight
+
+  # === Threshold Tuning ===
+  enable_threshold_search: true          # Enable automatic threshold search
+  threshold_search_interval: 0.05        # Search step size
+  threshold_range: [0.0, 1.0]            # Full threshold range
+
+  use_amp: true                          # Enable mixed precision training
+  gradient_clipping: false               # Disable gradient clipping
+  max_grad_norm: 1.0                     # Max gradient norm
+
+  # === Checkpoint Saving ===
+  save_improvement_threshold: 0.01       # Minimum improvement to save
+  save_interval_epochs: 10                 # Epoch interval for periodic saves
+
+  # === Backbone Freezing ===
+  freeze_backbone: false                  # Train full model
+
+# === Model Architecture ===
+model:
+  name: aer_unet                         # Model name
+  in_ch: 6                                # Input channels
+  n_classes: 1                            # Output classes (binary)
+  base_features: 32                       # Base channel count
+  dropout_rate: 0.3                       # Dropout rate
+  ens_weight: 1.0                         # Weight for ensemble
+  optimizer: adam                         # Optimizer type
